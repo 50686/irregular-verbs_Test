@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VerbMaster - Apprentissage Interactif des Verbes Irréguliers</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(50px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .floating { animation: float 3s ease-in-out infinite; }
+    .pulse { animation: pulse 2s infinite; }
+    .fade-in { animation: fadeIn 0.5s ease-out; }
+    .slide-in-right { animation: slideInRight 0.5s ease-out; }
+    .flashcard {
+      perspective: 1000px;
+      transition: all 0.3s ease;
+    }
+    .flashcard-inner {
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .flashcard.flipped .flashcard-inner {
+      transform: rotateY(180deg);
+    }
+    .flashcard-front, .flashcard-back {
+      backface-visibility: hidden;
+    }
+    .flashcard-back {
+      transform: rotateY(180deg);
+    }
+    .progress-ring__circle {
+      transition: stroke-dashoffset 0.5s;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+    .verb-count-badge {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body class="font-['Poppins'] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen text-gray-800 p-4 md:p-8">
+
+<div class="container mx-auto max-w-6xl">
+  <!-- Header with animated title -->
+  <header class="text-center mb-8 relative">
+    <h1 class="text-4xl md:text-5xl font-bold text-white mb-2 floating">VerbMaster</h1>
+    <p class="text-xl text-white opacity-90">Maîtrisez les verbes irréguliers anglais avec plaisir !</p>
+    <div class="absolute top-0 right-0 flex space-x-2">
+      <button id="darkModeToggle" class="p-2 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </button>
+      <button id="soundToggle" class="p-2 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M12 6a7.975 7.975 0 015.657 2.343m0 0a7.975 7.975 0 010 11.314m-11.314 0a7.975 7.975 0 010-11.314m0 0a7.975 7.975 0 015.657-2.343" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats Dashboard -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white bg-opacity-90 backdrop-blur-md rounded-xl p-4 shadow-lg transform hover:scale-105 transition">
+      <div class="text-indigo-600 text-3xl font-bold" id="totalScore">0</div>
+      <div class="text-sm text-gray-600">Score Global</div>
+    </div>
+    <div class="bg-white bg-opacity-90 backdrop-blur-md rounded-xl p-4 shadow-lg transform hover:scale-105 transition">
+      <div class="text-purple-600 text-3xl font-bold" id="streak">0</div>
+      <div class="text-sm text-gray-600">Série Actuelle</div>
+    </div>
+    <div class="bg-white bg-opacity-90 backdrop-blur-md rounded-xl p-4 shadow-lg transform hover:scale-105 transition">
+      <div class="text-pink-600 text-3xl font-bold" id="accuracy">100%</div>
+      <div class="text-sm text-gray-600">Précision</div>
+    </div>
+    <div class="bg-white bg-opacity-90 backdrop-blur-md rounded-xl p-4 shadow-lg transform hover:scale-105 transition">
+      <div class="text-green-600 text-3xl font-bold" id="level">1</div>
+      <div class="text-sm text-gray-600">Niveau</div>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="bg-white bg-opacity-95 backdrop-blur-md rounded-2xl p-6 shadow-2xl mb-8">
+    <!-- Tabs Navigation -->
+    <div class="flex border-b border-gray-200 mb-6">
+      <button class="tab px-4 py-2 font-medium text-sm rounded-t-lg border-b-2 border-transparent hover:text-indigo-600 transition" data-tab="quiz">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Quiz
+      </button>
+      <button class="tab px-4 py-2 font-medium text-sm rounded-t-lg border-b-2 border-transparent hover:text-indigo-600 transition" data-tab="flashcards">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        Flashcards
+      </button>
+      <button class="tab px-4 py-2 font-medium text-sm rounded-t-lg border-b-2 border-transparent hover:text-indigo-600 transition" data-tab="stats">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        Statistiques
+      </button>
+      <button class="tab px-4 py-2 font-medium text-sm rounded-t-lg border-b-2 border-transparent hover:text-indigo-600 transition" data-tab="verbs">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Liste des Verbes
+      </button>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="tab-content active" id="quiz-tab">
+      <!-- Mode Selector -->
+      <div class="flex flex-wrap justify-center gap-2 mb-6">
+        <button class="mode-btn px-4 py-2 rounded-full bg-indigo-100 text-indigo-700 font-medium flex items-center transition" data-mode="practice">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+          </svg>
+          Pratique
+        </button>
+        <button class="mode-btn px-4 py-2 rounded-full bg-purple-100 text-purple-700 font-medium flex items-center transition" data-mode="timed">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Chronométré
+        </button>
+        <button class="mode-btn px-4 py-2 rounded-full bg-pink-100 text-pink-700 font-medium flex items-center transition" data-mode="survival">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016zM12 9v2m0 4h.01" />
+          </svg>
+          Survie
+        </button>
+      </div>
+
+      <!-- Difficulty Selector -->
+      <div class="flex flex-wrap justify-center gap-2 mb-6">
+        <button class="difficulty-btn px-4 py-2 rounded-full border-2 font-medium transition" data-difficulty="easy">
+          <span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span>
+          Facile <span class="verb-count-badge bg-green-500 text-white">7</span>
+        </button>
+        <button class="difficulty-btn px-4 py-2 rounded-full border-2 font-medium transition" data-difficulty="medium">
+          <span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1"></span>
+          Moyen <span class="verb-count-badge bg-yellow-500 text-white">5</span>
+        </button>
+        <button class="difficulty-btn px-4 py-2 rounded-full border-2 font-medium transition" data-difficulty="hard">
+          <span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span>
+          Difficile <span class="verb-count-badge bg-red-500 text-white">9</span>
+        </button>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="mb-6">
+        <div class="flex justify-between mb-1">
+          <span class="text-sm font-medium">Progression</span>
+          <span class="text-sm font-medium" id="progressPercentage">0%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2.5">
+          <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-purple-600 h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Timer (hidden by default) -->
+      <div class="flex justify-center mb-6">
+        <div id="timer" class="hidden px-6 py-3 bg-purple-100 text-purple-800 rounded-full font-bold text-lg flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span id="timeLeft">30</span>s
+        </div>
+      </div>
+
+      <!-- Verb Display -->
+      <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl mb-6 border-l-4 border-indigo-400">
+        <div class="text-center">
+          <div id="verbBase" class="text-4xl md:text-5xl font-bold text-indigo-600 mb-2 pulse">write</div>
+          <div id="verbTranslation" class="text-xl text-gray-600 italic mb-3">écrire</div>
+          <div class="flex justify-center items-center">
+            <span id="phonetic" class="font-mono text-gray-500">/raɪt/</span>
+            <button id="playPronunciation" class="ml-2 p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Fields -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label for="preteritInput" class="block text-sm font-medium text-gray-700 mb-1">Prétérit</label>
+          <input type="text" id="preteritInput" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition" placeholder="ex: wrote">
+        </div>
+        <div>
+          <label for="pastParticipleInput" class="block text-sm font-medium text-gray-700 mb-1">Participe passé</label>
+          <input type="text" id="pastParticipleInput" class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition" placeholder="ex: written">
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <button id="checkAnswer" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          Vérifier
+        </button>
+        <button id="nextVerb" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+          </svg>
+          Suivant
+        </button>
+        <button id="showHint" class="btn bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Indice
+        </button>
+        <button id="showAnswer" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Réponse
+        </button>
+      </div>
+
+      <!-- Hint Container -->
+      <div id="hintContainer" class="hidden bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded-r-lg">
+        <div class="flex">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <strong class="text-blue-600">Indice :</strong>
+            <span id="hintText" class="text-gray-700">Le verbe le plus utilisé en anglais.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result Display -->
+      <div id="result" class="hidden p-4 mb-6 rounded-lg text-center font-medium"></div>
+
+      <!-- Achievements -->
+      <div id="achievements" class="flex flex-wrap justify-center gap-2 mb-6"></div>
+    </div>
+
+    <!-- Flashcards Tab -->
+    <div class="tab-content hidden" id="flashcards-tab">
+      <div class="text-center mb-6">
+        <h3 class="text-2xl font-bold text-indigo-700 mb-2">Flashcards</h3>
+        <p class="text-gray-600">Cliquez sur une carte pour la retourner et voir les réponses</p>
+      </div>
+
+      <div class="flex flex-wrap justify-center gap-6 mb-6">
+        <div class="flashcard w-64 h-40 cursor-pointer" onclick="this.classList.toggle('flipped')">
+          <div class="flashcard-inner relative w-full h-full">
+            <div class="flashcard-front absolute w-full h-full bg-white rounded-xl shadow-lg p-6 flex flex-col justify-center items-center backface-hidden">
+              <div class="text-2xl font-bold text-indigo-600 mb-2" id="fcBase">write</div>
+              <div class="text-gray-500 italic" id="fcTranslation">écrire</div>
+              <div class="mt-2 text-sm text-gray-400">Cliquez pour retourner</div>
+            </div>
+            <div class="flashcard-back absolute w-full h-full bg-indigo-600 text-white rounded-xl shadow-lg p-6 flex flex-col justify-center items-center backface-hidden">
+              <div class="mb-4">
+                <div class="text-sm text-indigo-200">Prétérit</div>
+                <div class="text-xl font-bold" id="fcPret">wrote</div>
+              </div>
+              <div>
+                <div class="text-sm text-indigo-200">Participe passé</div>
+                <div class="text-xl font-bold" id="fcPastp">written</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-center gap-4">
+        <button id="prevFlashcard" class="btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Précédent
+        </button>
+        <button id="nextFlashcard" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition">
+          Suivant
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Statistics Tab -->
+    <div class="tab-content hidden" id="stats-tab">
+      <div class="text-center mb-6">
+        <h3 class="text-2xl font-bold text-indigo-700 mb-2">Vos Statistiques</h3>
+        <p class="text-gray-600">Suivez votre progression et identifiez vos points faibles</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Accuracy Chart -->
+        <div class="bg-white p-6 rounded-xl shadow">
+          <h4 class="font-bold text-lg mb-4 text-center">Précision par Difficulté</h4>
+          <div class="flex justify-between items-end h-40">
+            <div class="flex flex-col items-center">
+              <div class="w-12 bg-green-500 rounded-t" style="height: 80%"></div>
+              <span class="text-xs mt-1">Facile</span>
+              <span class="text-xs font-bold">85%</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-12 bg-yellow-500 rounded-t" style="height: 60%"></div>
+              <span class="text-xs mt-1">Moyen</span>
+              <span class="text-xs font-bold">65%</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-12 bg-red-500 rounded-t" style="height: 40%"></div>
+              <span class="text-xs mt-1">Difficile</span>
+              <span class="text-xs font-bold">45%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Ring -->
+        <div class="bg-white p-6 rounded-xl shadow flex flex-col items-center">
+          <h4 class="font-bold text-lg mb-4 text-center">Progression Globale</h4>
+          <div class="relative w-32 h-32">
+            <svg class="w-full h-full" viewBox="0 0 36 36">
+              <path
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="#eee"
+                stroke-width="3"
+              />
+              <path
+                class="progress-ring__circle"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="url(#gradient)"
+                stroke-width="3"
+                stroke-dasharray="25, 100"
+              />
+              <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#667eea" />
+                  <stop offset="100%" stop-color="#764ba2" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <span class="text-2xl font-bold" id="progressRingText">25%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mistakes Tracker -->
+      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-r-lg mb-6">
+        <h4 class="font-bold text-lg mb-4 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          Verbes à Réviser
+        </h4>
+        <div id="mistakesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div class="bg-white p-3 rounded-lg shadow flex justify-between items-center">
+            <div>
+              <strong>write</strong> - 3 erreurs
+              <div class="text-sm text-gray-500">wrote / written</div>
+            </div>
+            <button class="bg-indigo-100 text-indigo-600 p-1 rounded hover:bg-indigo-200 transition">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Verbs List Tab -->
+    <div class="tab-content hidden" id="verbs-tab">
+      <div class="text-center mb-6">
+        <h3 class="text-2xl font-bold text-indigo-700 mb-2">Liste Complète des Verbes</h3>
+        <p class="text-gray-600">Explorez tous les verbes irréguliers par niveau de difficulté</p>
+      </div>
+
+      <div class="mb-6">
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button class="verb-filter-btn px-3 py-1 rounded-full bg-green-100 text-green-800 font-medium text-sm" data-difficulty="easy">
+            Facile <span class="bg-green-500 text-white px-2 py-0.5 rounded-full text-xs ml-1">7</span>
+          </button>
+          <button class="verb-filter-btn px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium text-sm" data-difficulty="medium">
+            Moyen <span class="bg-yellow-500 text-white px-2 py-0.5 rounded-full text-xs ml-1">5</span>
+          </button>
+          <button class="verb-filter-btn px-3 py-1 rounded-full bg-red-100 text-red-800 font-medium text-sm" data-difficulty="hard">
+            Difficile <span class="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs ml-1">9</span>
+          </button>
+          <button class="verb-filter-btn px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 font-medium text-sm active" data-difficulty="all">
+            Tous <span class="bg-indigo-500 text-white px-2 py-0.5 rounded-full text-xs ml-1">21</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="verbsGrid">
+        <!-- Verb cards will be inserted here by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center text-white text-opacity-70 text-sm mt-8">
+    <p>VerbMaster - © 2023 Tous droits réservés</p>
+  </footer>
+</div>
+
+<script>
+  // Base de données étendue des verbes irréguliers
+  const verbesDatabase = {
+    easy: [
+      { base: "be", trad: "être", pret: "was/were", pastp: "been", phonetic: "/biː/", hint: "Le verbe le plus utilisé en anglais." },
+      { base: "have", trad: "avoir", pret: "had", pastp: "had", phonetic: "/hæv/", hint: "À l'infinitif comme au prétérit." },
+      { base: "do", trad: "faire", pret: "did", pastp: "done", phonetic: "/duː/", hint: "Did + do pour les questions." },
+      { base: "say", trad: "dire", pret: "said", pastp: "said", phonetic: "/seɪ/", hint: "Se prononce comme 'said', mais s'écrit pareil." },
+      { base: "go", trad: "aller", pret: "went", pastp: "gone", phonetic: "/ɡoʊ/", hint: "Verbe très irrégulier." },
+      { base: "see", trad: "voir", pret: "saw", pastp: "seen", phonetic: "/siː/", hint: "On voit avec les yeux." },
+      { base: "eat", trad: "manger", pret: "ate", pastp: "eaten", phonetic: "/iːt/", hint: "A-T-E pour le prétérit." },
+    ],
+    medium: [
+      { base: "begin", trad: "commencer", pret: "began", pastp: "begun", phonetic: "/bɪˈɡɪn/", hint: "BegUN commence par U." },
+      { base: "choose", trad: "choisir", pret: "chose", pastp: "chosen", phonetic: "/tʃuːz/", hint: "Chose ≠ chose (nom)." },
+      { base: "drink", trad: "boire", pret: "drank", pastp: "drunk", phonetic: "/drɪŋk/", hint: "Drank, Drunk – voyelles A puis U." },
+      { base: "drive", trad: "conduire", pret: "drove", pastp: "driven", phonetic: "/draɪv/", hint: "Comme 'grove' au prétérit." },
+      { base: "throw", trad: "lancer", pret: "threw", pastp: "thrown", phonetic: "/θruː/", hint: "Threw ressemble à 'through' mais se prononce différemment." }
+    ],
+    hard: [
+      { base: "arise", trad: "se lever / survenir", pret: "arose", pastp: "arisen", phonetic: "/əˈraɪz/", hint: "Arise → Arise → Arisen." },
+      { base: "awake", trad: "se réveiller", pret: "awoke", pastp: "awoken", phonetic: "/əˈwoʊk/", hint: "Awake → Awoke → Awoken." },
+      { base: "beget", trad: "engendrer", pret: "begot", pastp: "begotten", phonetic: "/bɪˈɡɑːt/", hint: "Peu utilisé aujourd'hui." },
+      { base: "bear", trad: "porter / supporter", pret: "bore", pastp: "borne", phonetic: "/bɛər/", hint: "Borne ou born selon le sens." },
+      { base: "beat", trad: "battre", pret: "beat", pastp: "beaten", phonetic: "/biːt/", hint: "Beatbox → Beat, beaten." },
+      { base: "bite", trad: "mordre", pret: "bit", pastp: "bitten", phonetic: "/bɪt/", hint: "Bit ≠ bite." },
+      { base: "bleed", trad: "saigner", pret: "bled", pastp: "bled", phonetic: "/blɛd/", hint: "Pas de changement." },
+      { base: "blow", trad: "souffler", pret: "blew", pastp: "blown", phonetic: "/bluː/", hint: "Blew ≠ blue." },
+      { base: "break", trad: "casser", pret: "broke", pastp: "broken", phonetic: "/breɪk/", hint: "BROKE, BROKEN – même famille que 'speak'." },
+    ]
+  };
+
+  // Variables du jeu
+  let currentVerb = {};
+  let currentDifficulty = 'easy';
+  let currentMode = 'practice';
+  let score = 0;
+  let streak = 0;
+  let totalAttempts = 0;
+  let correctAnswers = 0;
+  let level = 1;
+  let timer = null;
+  let timeLeft = 30;
+  let mistakes = new Map();
+  let achievements = [];
+  let currentFlashcardIndex = 0;
+  let soundEnabled = true;
+  let darkMode = false;
+
+  // Initialisation
+  function init() {
+    setupEventListeners();
+    nextVerb();
+    updateStats();
+    generateVerbsGrid();
+    updateFlashcard();
+    updateVerbCounts();
+  }
+
+  function setupEventListeners() {
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        
+        this.classList.add('active');
+        document.getElementById(this.dataset.tab + '-tab').classList.remove('hidden');
+        
+        if (this.dataset.tab === 'flashcards') {
+          updateFlashcard();
+        }
+      });
+    });
+
+    // Mode selection
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentMode = this.dataset.mode;
+        
+        const timerDiv = document.getElementById('timer');
+        if (currentMode === 'timed') {
+          timerDiv.classList.remove('hidden');
+        } else {
+          timerDiv.classList.add('hidden');
+          if (timer) clearInterval(timer);
+        }
+        
+        nextVerb();
+      });
+    });
+
+    // Difficulty selection
+    document.querySelectorAll('.difficulty-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentDifficulty = this.dataset.difficulty;
+        nextVerb();
+      });
+    });
+
+    // Verb filter
+    document.querySelectorAll('.verb-filter-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.verb-filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        filterVerbs(this.dataset.difficulty);
+      });
+    });
+
+    // Action buttons
+    document.getElementById('checkAnswer').addEventListener('click', checkAnswer);
+    document.getElementById('nextVerb').addEventListener('click', nextVerb);
+    document.getElementById('showHint').addEventListener('click', showHint);
+    document.getElementById('showAnswer').addEventListener('click', showAnswer);
+    document.getElementById('playPronunciation').addEventListener('click', playPronunciation);
+    document.getElementById('prevFlashcard').addEventListener('click', prevFlashcard);
+    document.getElementById('nextFlashcard').addEventListener('click', nextFlashcard);
+    document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
+    document.getElementById('soundToggle').addEventListener('click', toggleSound);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey) {
+        switch(e.key) {
+          case 'Enter':
+            e.preventDefault();
+            checkAnswer();
+            break;
+          case 'n':
+            e.preventDefault();
+            nextVerb();
+            break;
+          case 'h':
+            e.preventDefault();
+            showHint();
+            break;
+          case 'r':
+            e.preventDefault();
+            resetGame();
+            break;
+        }
+      }
+    });
+
+    // Input field navigation
+    document.getElementById('preteritInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        document.getElementById('pastParticipleInput').focus();
+      }
+    });
+
+    document.getElementById('pastParticipleInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        checkAnswer();
+      }
+    });
+  }
+
+  function getAllVerbs() {
+    return [...verbesDatabase.easy, ...verbesDatabase.medium, ...verbesDatabase.hard];
+  }
+
+  function getCurrentVerbsList() {
+    return verbesDatabase[currentDifficulty];
+  }
+
+  function nextVerb() {
+    const verbs = getCurrentVerbsList();
+    currentVerb = verbs[Math.floor(Math.random() * verbs.length)];
+    
+    document.getElementById('verbBase').textContent = currentVerb.base;
+    document.getElementById('verbTranslation').textContent = currentVerb.trad;
+    document.getElementById('phonetic').textContent = currentVerb.phonetic;
+    
+    clearInputs();
+    clearResult();
+    hideHint();
+    
+    if (currentMode === 'timed') {
+      startTimer();
+    }
+  }
+
+  function clearInputs() {
+    document.getElementById('preteritInput').value = '';
+    document.getElementById('pastParticipleInput').value = '';
+    document.getElementById('preteritInput').focus();
+  }
+
+  function clearResult() {
+    const resultDiv = document.getElementById('result');
+    resultDiv.textContent = '';
+    resultDiv.className = 'hidden p-4 mb-6 rounded-lg text-center font-medium';
+  }
+
+  function checkAnswer() {
+    const preterit = document.getElementById('preteritInput').value.trim().toLowerCase();
+    const pastParticiple = document.getElementById('pastParticipleInput').value.trim().toLowerCase();
+    
+    const correctPreterit = currentVerb.pret.toLowerCase();
+    const correctPastParticiple = currentVerb.pastp.toLowerCase();
+    
+    totalAttempts++;
+    
+    if (preterit === correctPreterit && pastParticiple === correctPastParticiple) {
+      handleCorrectAnswer();
+    } else {
+      handleIncorrectAnswer(preterit, pastParticiple);
+    }
+    
+    updateStats();
+    updateProgress();
+    checkAchievements();
+  }
+
+  function handleCorrectAnswer() {
+    score += getPointsForDifficulty();
+    correctAnswers++;
+    streak++;
+    
+    showResult('✅ Excellent ! Bonne réponse !', 'bg-green-100 text-green-800 border-green-400');
+    
+    if (currentMode === 'timed') {
+      clearInterval(timer);
+    }
+    
+    // Passage de niveau
+    if (score > 0 && score % 100 === 0) {
+      level++;
+      showAchievement(`🎉 Niveau ${level} atteint !`);
+    }
+  }
+
+  function handleIncorrectAnswer(userPreterit, userPastParticiple) {
+    streak = 0;
+    
+    // Enregistrer l'erreur
+    const key = currentVerb.base;
+    if (!mistakes.has(key)) {
+      mistakes.set(key, { verb: currentVerb, count: 0 });
+    }
+    mistakes.get(key).count++;
+    
+    let feedback = `❌ Pas tout à fait...<br>`;
+    feedback += `<strong>Prétérit correct :</strong> ${currentVerb.pret}`;
+    if (userPreterit !== currentVerb.pret.toLowerCase()) {
+      feedback += ` (vous avez écrit: ${userPreterit})`;
+    }
+    feedback += `<br><strong>Participe passé correct :</strong> ${currentVerb.pastp}`;
+    if (userPastParticiple !== currentVerb.pastp.toLowerCase()) {
+      feedback += ` (vous avez écrit: ${userPastParticiple})`;
+    }
+    
+    showResult(feedback, 'bg-red-100 text-red-800 border-red-400');
+    updateMistakeTracker();
+  }
+
+  function getPointsForDifficulty() {
+    const points = { easy: 5, medium: 10, hard: 20 };
+    return points[currentDifficulty] * (currentMode === 'timed' ? 2 : 1);
+  }
+
+  function showResult(message, className) {
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = message;
+    resultDiv.className = `p-4 mb-6 rounded-lg text-center font-medium border-l-4 ${className} fade-in`;
+    resultDiv.classList.remove('hidden');
+  }
+
+  function updateStats() {
+    document.getElementById('totalScore').textContent = score;
+    document.getElementById('streak').textContent = streak;
+    document.getElementById('level').textContent = level;
+    
+    const accuracy = totalAttempts > 0 ? Math.round((correctAnswers / totalAttempts) * 100) : 100;
+    document.getElementById('accuracy').textContent = accuracy + '%';
+  }
+
+  function updateProgress() {
+    const progress = Math.min((score % 100), 100);
+    const progressBar = document.getElementById('progressBar');
+    progressBar.style.width = progress + '%';
+    document.getElementById('progressPercentage').textContent = progress + '%';
+    
+    // Update progress ring
+    const progressRingText = document.getElementById('progressRingText');
+    const overallProgress = Math.min(Math.floor((score / 500) * 100), 100);
+    progressRingText.textContent = overallProgress + '%';
+    
+    const circle = document.querySelector('.progress-ring__circle');
+    if (circle) {
+      const circumference = 2 * Math.PI * 15.9155;
+      const offset = circumference - (overallProgress / 100) * circumference;
+      circle.style.strokeDashoffset = offset;
+    }
+  }
+
+  function startTimer() {
+    timeLeft = 30;
+    const timerDiv = document.getElementById('timer');
+    timerDiv.classList.remove('hidden');
+    timerDiv.classList.remove('bg-red-100', 'text-red-800');
+    timerDiv.classList.add('bg-purple-100', 'text-purple-800');
+    
+    if (timer) clearInterval(timer);
+    
+    timer = setInterval(() => {
+      timeLeft--;
+      document.getElementById('timeLeft').textContent = timeLeft;
+      
+      if (timeLeft <= 5) {
+        timerDiv.classList.remove('bg-purple-100', 'text-purple-800');
+        timerDiv.classList.add('bg-red-100', 'text-red-800');
+      }
+      
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        showResult('⏰ Temps écoulé !', 'bg-red-100 text-red-800 border-red-400');
+        setTimeout(nextVerb, 2000);
+      }
+    }, 1000);
+  }
+
+  function showHint() {
+    document.getElementById('hintText').textContent = currentVerb.hint;
+    document.getElementById('hintContainer').classList.remove('hidden');
+  }
+
+  function hideHint() {
+    document.getElementById('hintContainer').classList.add('hidden');
+  }
+
+  function showAnswer() {
+    document.getElementById('preteritInput').value = currentVerb.pret;
+    document.getElementById('pastParticipleInput').value = currentVerb.pastp;
+    
+    showResult(`💡 Réponse : ${currentVerb.pret} / ${currentVerb.pastp}`, 'bg-blue-100 text-blue-800 border-blue-400');
+  }
+
+  function playPronunciation() {
+    if (!soundEnabled) return;
+    
+    // Utilisation de l'API Speech Synthesis
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(currentVerb.base);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.8;
+      speechSynthesis.speak(utterance);
+    } else {
+      showResult('Fonctionnalité audio non supportée par votre navigateur', 'bg-yellow-100 text-yellow-800 border-yellow-400');
+    }
+  }
+
+  function generateVerbsGrid() {
+    const allVerbs = getAllVerbs();
+    const grid = document.getElementById('verbsGrid');
+    
+    grid.innerHTML = allVerbs.map(verb => {
+      const difficulty = 
+        verbesDatabase.easy.includes(verb) ? 'easy' : 
+        verbesDatabase.medium.includes(verb) ? 'medium' : 'hard';
+      
+      const difficultyClass = 
+        difficulty === 'easy' ? 'bg-green-100 text-green-800' : 
+        difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+      
+      return `
+        <div class="verb-card ${difficultyClass} p-4 rounded-lg shadow hover:shadow-md transition" data-difficulty="${difficulty}">
+          <div class="flex justify-between items-start mb-2">
+            <strong class="text-lg">${verb.base}</strong>
+            <span class="text-xs px-2 py-1 rounded-full ${difficultyClass.replace('100', '200')}">${difficulty === 'easy' ? 'Facile' : difficulty === 'medium' ? 'Moyen' : 'Difficile'}</span>
+          </div>
+          <div class="text-sm italic mb-1">${verb.trad}</div>
+          <div class="text-sm font-mono mb-1">${verb.phonetic}</div>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <div class="text-xs text-gray-500">Prétérit</div>
+              <div>${verb.pret}</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500">P. passé</div>
+              <div>${verb.pastp}</div>
+            </div>
+          </div>
+          <div class="text-xs mt-2 text-gray-600">💡 ${verb.hint}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function filterVerbs(difficulty) {
+    const verbCards = document.querySelectorAll('.verb-card');
+    
+    verbCards.forEach(card => {
+      if (difficulty === 'all' || card.dataset.difficulty === difficulty) {
+        card.classList.remove('hidden');
+      } else {
+        card.classList.add('hidden');
+      }
+    });
+  }
+
+  function updateMistakeTracker() {
+    const mistakesList = document.getElementById('mistakesList');
+    
+    if (mistakes.size === 0) {
+      mistakesList.innerHTML = '<div class="text-center py-4">Aucune erreur pour le moment ! 🎉</div>';
+      return;
+    }
+    
+    let html = '';
+    mistakes.forEach((data, verbBase) => {
+      html += `
+        <div class="bg-white p-3 rounded-lg shadow flex justify-between items-center">
+          <div>
+            <strong>${data.verb.base}</strong> - ${data.count} erreur(s)
+            <div class="text-sm text-gray-500">${data.verb.pret} / ${data.verb.pastp}</div>
+          </div>
+          <button onclick="practiceVerb('${verbBase}')" class="bg-indigo-100 text-indigo-600 p-1 rounded hover:bg-indigo-200 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </button>
+        </div>
+      `;
+    });
+    
+    mistakesList.innerHTML = html;
+  }
+
+  function practiceVerb(verbBase) {
+    const allVerbs = getAllVerbs();
+    currentVerb = allVerbs.find(v => v.base === verbBase);
+    
+    if (currentVerb) {
+      // Switch to quiz tab
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+      
+      document.querySelector('.tab[data-tab="quiz"]').classList.add('active');
+      document.getElementById('quiz-tab').classList.remove('hidden');
+      
+      // Update display
+      document.getElementById('verbBase').textContent = currentVerb.base;
+      document.getElementById('verbTranslation').textContent = currentVerb.trad;
+      document.getElementById('phonetic').textContent = currentVerb.phonetic;
+      clearInputs();
+      clearResult();
+      hideHint();
+    }
+  }
+
+  function updateFlashcard() {
+    const allVerbs = getAllVerbs();
+    if (allVerbs.length === 0) return;
+    
+    currentFlashcardIndex = currentFlashcardIndex % allVerbs.length;
+    if (currentFlashcardIndex < 0) currentFlashcardIndex = allVerbs.length - 1;
+    
+    const verb = allVerbs[currentFlashcardIndex];
+    
+    document.getElementById('fcBase').textContent = verb.base;
+    document.getElementById('fcTranslation').textContent = verb.trad;
+    document.getElementById('fcPret').textContent = verb.pret;
+    document.getElementById('fcPastp').textContent = verb.pastp;
+    
+    // Reset flashcard to front
+    const flashcard = document.querySelector('.flashcard');
+    if (flashcard) flashcard.classList.remove('flipped');
+  }
+
+  function prevFlashcard() {
+    currentFlashcardIndex--;
+    updateFlashcard();
+  }
+
+  function nextFlashcard() {
+    currentFlashcardIndex++;
+    updateFlashcard();
+  }
+
+  function checkAchievements() {
+    const newAchievements = [];
+    
+    // Achievements basés sur le score
+    if (score >= 50 && !achievements.includes('first50')) {
+      newAchievements.push({ id: 'first50', text: '🎯 Premier 50 points !' });
+    }
+    if (score >= 100 && !achievements.includes('first100')) {
+      newAchievements.push({ id: 'first100', text: '💯 Centenaire !' });
+    }
+    if (score >= 500 && !achievements.includes('first500')) {
+      newAchievements.push({ id: 'first500', text: '🌟 Expert en herbe !' });
+    }
+    
+    // Achievements basés sur la série
+    if (streak >= 5 && !achievements.includes('streak5')) {
+      newAchievements.push({ id: 'streak5', text: '🔥 Série de 5 !' });
+    }
+    if (streak >= 10 && !achievements.includes('streak10')) {
+      newAchievements.push({ id: 'streak10', text: '🚀 Série de 10 !' });
+    }
+    if (streak >= 20 && !achievements.includes('streak20')) {
+      newAchievements.push({ id: 'streak20', text: '👑 Maître des séries !' });
+    }
+    
+    // Achievements basés sur la précision
+    if (totalAttempts >= 20 && (correctAnswers / totalAttempts) >= 0.9 && !achievements.includes('precision90')) {
+      newAchievements.push({ id: 'precision90', text: '🎯 Précision 90% !' });
+    }
+    
+    // Achievements spéciaux
+    if (currentMode === 'hard' && streak >= 5 && !achievements.includes('hardMode')) {
+      newAchievements.push({ id: 'hardMode', text: '💪 Dur à cuire !' });
+    }
+    
+    // Afficher les nouveaux achievements
+    newAchievements.forEach(achievement => {
+      achievements.push(achievement.id);
+      showAchievement(achievement.text);
+    });
+  }
+
+  function showAchievement(text) {
+    const achievementDiv = document.createElement('div');
+    achievementDiv.className = 'achievement bg-gradient-to-r from-yellow-400 to-yellow-500 text-white px-4 py-2 rounded-full font-bold shadow-lg slide-in-right';
+    achievementDiv.textContent = text;
+    
+    document.getElementById('achievements').appendChild(achievementDiv);
+    
+    // Supprimer après 3 secondes
+    setTimeout(() => {
+      achievementDiv.remove();
+    }, 3000);
+  }
+
+  function toggleDarkMode() {
+    darkMode = !darkMode;
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      document.getElementById('darkModeToggle').innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      `;
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.getElementById('darkModeToggle').innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      `;
+    }
+  }
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    if (soundEnabled) {
+      document.getElementById('soundToggle').innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M12 6a7.975 7.975 0 015.657 2.343m0 0a7.975 7.975 0 010 11.314m-11.314 0a7.975 7.975 0 010-11.314m0 0a7.975 7.975 0 015.657-2.343" />
+        </svg>
+      `;
+    } else {
+      document.getElementById('soundToggle').innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd" />
+        </svg>
+      `;
+    }
+  }
+
+  function updateVerbCounts() {
+    const easyCount = verbesDatabase.easy.length;
+    const mediumCount = verbesDatabase.medium.length;
+    const hardCount = verbesDatabase.hard.length;
+    const totalCount = easyCount + mediumCount + hardCount;
+    
+    // Update difficulty buttons
+    document.querySelectorAll('.verb-count-badge').forEach(badge => {
+      const parent = badge.parentElement;
+      if (parent.dataset.difficulty === 'easy') {
+        badge.textContent = easyCount;
+      } else if (parent.dataset.difficulty === 'medium') {
+        badge.textContent = mediumCount;
+      } else if (parent.dataset.difficulty === 'hard') {
+        badge.textContent = hardCount;
+      }
+    });
+    
+    // Update filter buttons
+    document.querySelectorAll('.verb-filter-btn span').forEach(span => {
+      const parent = span.parentElement;
+      if (parent.dataset.difficulty === 'easy') {
+        span.textContent = easyCount;
+      } else if (parent.dataset.difficulty === 'medium') {
+        span.textContent = mediumCount;
+      } else if (parent.dataset.difficulty === 'hard') {
+        span.textContent = hardCount;
+      } else if (parent.dataset.difficulty === 'all') {
+        span.textContent = totalCount;
+      }
+    });
+  }
+
+  function resetGame() {
+    if (confirm('Êtes-vous sûr de vouloir recommencer ? Votre progression actuelle sera perdue.')) {
+      score = 0;
+      streak = 0;
+      totalAttempts = 0;
+      correctAnswers = 0;
+      level = 1;
+      mistakes.clear();
+      achievements.length = 0;
+      
+      updateStats();
+      updateProgress();
+      updateMistakeTracker();
+      nextVerb();
+      
+      showResult('🔄 Jeu remis à zéro ! Bonne chance !', 'bg-blue-100 text-blue-800 border-blue-400');
+    }
+  }
+
+  // Initialisation au chargement de la page
+  window.onload = function() {
+    init();
+    
+    // Afficher un tip après 10 secondes
+    setTimeout(() => {
+      const tips = [
+        "💡 Astuce: Groupez les verbes par familles pour mieux les mémoriser !",
+        "💡 Astuce: Répétez les verbes à voix haute pour améliorer votre prononciation !",
+        "💡 Astuce: Créez des phrases avec les verbes pour mieux les retenir !",
+        "💡 Astuce: Concentrez-vous sur vos erreurs fréquentes !",
+        "💡 Astuce: Pratiquez un peu chaque jour plutôt que beaucoup d'un coup !"
+      ];
+      showAchievement(tips[Math.floor(Math.random() * tips.length)]);
+    }, 10000);
+  };
+</script>
+
+</body>
+</html>
